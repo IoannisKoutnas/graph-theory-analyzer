@@ -1,16 +1,25 @@
-import tkinter as tk
-from tkinter import scrolledtext
-import networkx as nx
+"""
+Graph Theory Analysis – Karate Club
+-----------------------------------
+Interactive Tkinter GUI app for visualizing and analyzing graph algorithms on the classic Karate Club network.
+Features BFS, DFS traversals, greedy coloring, cycle detection, and maximum clique finding.
+Author: IOANNIS KOUTNAS
+"""
+
+import tkinter as tk                          # For GUI window and widgets
+from tkinter import scrolledtext              # For scrollable output box
+import networkx as nx                         # For graph data and algorithms
 import matplotlib
-matplotlib.use("TkAgg")
-import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
+matplotlib.use("TkAgg")                       # Use Tkinter-compatible backend for matplotlib
+import matplotlib.pyplot as plt               # To plot/animate the graph
+from matplotlib.animation import FuncAnimation# To animate traversals
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-import threading
-from collections import deque
-import matplotlib.colors as mcolors
+import threading                             # For long-running animations in the GUI
+from collections import deque                 # For BFS queue
+import matplotlib.colors as mcolors           # For flexible color palette
 
 def bfs_with_depth(G, start=0):
+    """Breadth-First Search returning traversal order and node depth."""
     visited = set([start])
     queue = deque([(start, 0)])
     order = []
@@ -20,10 +29,11 @@ def bfs_with_depth(G, start=0):
         for neighbor in sorted(G.neighbors(node)):
             if neighbor not in visited:
                 visited.add(neighbor)
-                queue.append((neighbor, depth+1))
+                queue.append((neighbor, depth + 1))
     return order
 
 def dfs_with_depth(G, start=0):
+    """Depth-First Search (recursive) returning traversal order and node depth."""
     visited = set()
     order = []
     def dfs_rec(node, depth):
@@ -31,11 +41,15 @@ def dfs_with_depth(G, start=0):
         order.append((node, depth))
         for neighbor in sorted(G.neighbors(node)):
             if neighbor not in visited:
-                dfs_rec(neighbor, depth+1)
+                dfs_rec(neighbor, depth + 1)
     dfs_rec(start, 0)
     return order
 
 def has_cycle(G):
+    """
+    Check for cycles in an undirected graph using DFS and recursion stack.
+    Returns True if any cycle is found.
+    """
     visited = set()
     rec_stack = set()
     def dfs_cycle(v, parent):
@@ -56,6 +70,11 @@ def has_cycle(G):
     return False
 
 def greedy_coloring(G):
+    """
+    Assign colors to graph nodes using a greedy coloring algorithm.
+    Ensures no adjacent nodes have the same color.
+    Returns a dictionary mapping node to color index.
+    """
     result = dict()
     for node in sorted(G.nodes()):
         neighbor_colors = set(result.get(neigh) for neigh in G.neighbors(node))
@@ -66,16 +85,20 @@ def greedy_coloring(G):
     return result
 
 def find_max_clique(G):
-    # Returns the largest clique (list of nodes)
+    """
+    Finds the largest clique (maximal complete subgraph) using NetworkX.
+    Returns the list of node indices.
+    """
     cliques = list(nx.find_cliques(G))
     max_clique = max(cliques, key=len)
     return max_clique
 
 class GraphApp:
+    """Main application class for GUI and graph operations."""
     def __init__(self, root):
         self.root = root
         self.root.title("Graph Theory Analysis – Karate Club")
-        self.G = nx.karate_club_graph()
+        self.G = nx.karate_club_graph()          # Loads classic Karate Club graph (34 nodes, 78 edges)
         self.pos = nx.spring_layout(self.G, seed=42)
         self.anim = None
         self.anim_thread = None
@@ -84,11 +107,14 @@ class GraphApp:
 
         root.geometry("1300x900")
 
+        # Create left area for graph visualization
         left_frame = tk.Frame(self.root)
         left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        # Create right area for control panel and output
         right_frame = tk.Frame(self.root, width=350, padx=8)
         right_frame.pack(side=tk.RIGHT, fill=tk.Y)
 
+        # Create matplotlib figure and bind it to Tkinter canvas
         self.fig, self.ax = plt.subplots(figsize=(8, 8))
         self.ax.axis("off")
         self.canvas = FigureCanvasTkAgg(self.fig, left_frame)
@@ -97,6 +123,7 @@ class GraphApp:
 
         bold_font = ('Helvetica', 11, 'bold')
         tk.Label(right_frame, text="Choose action:", font=('Helvetica', 14, 'bold')).pack(pady=12)
+        # Button controls for each graph operation:
         tk.Button(right_frame, text="Run BFS", command=self.run_bfs, height=2, width=18, font=bold_font).pack(pady=6)
         tk.Button(right_frame, text="Run DFS", command=self.run_dfs, height=2, width=18, font=bold_font).pack(pady=6)
         tk.Button(right_frame, text="Run Greedy Coloring", command=self.run_coloring, height=2, width=18, font=bold_font).pack(pady=6)
@@ -109,15 +136,19 @@ class GraphApp:
         self.log = scrolledtext.ScrolledText(right_frame, width=45, height=21, font=('Consolas', 11))
         self.log.pack(pady=(1, 10))
 
+        # Initially all nodes are light blue
         self.node_colors = ["lightblue"] * 34
+        # Show initial log info
         self.log_msg(f"Nodes: 34, Edges: 78\n")
         self.draw_graph()
 
     def log_msg(self, msg):
+        """Append text to the log window and scroll to end."""
         self.log.insert(tk.END, msg + '\n')
         self.log.see(tk.END)
 
     def clear_log(self):
+        """Clear log output and reset visualization to starting state."""
         self.log.delete('1.0', tk.END)
         self.current_coloring = None
         self.node_colors = ["lightblue"] * 34
@@ -125,10 +156,15 @@ class GraphApp:
         self.draw_graph()
 
     def exit_app(self):
+        """Quit the application gracefully."""
         self.root.quit()
         self.root.destroy()
 
     def get_color_map(self, num_colors):
+        """
+        Generate a color palette for coloring nodes.
+        Uses Tableau and CSS colors for wide variety.
+        """
         base_colors = list(mcolors.TABLEAU_COLORS.values())
         if num_colors <= len(base_colors):
             return base_colors[:num_colors]
@@ -136,16 +172,21 @@ class GraphApp:
         return [extended[i % len(extended)] for i in range(num_colors)]
 
     def draw_graph(self, highlight_nodes=None, title=""):
+        """
+        Update the visual display of the network.
+        Optionally highlight special nodes (e.g. BFS order/gold, DFS order, clique/red).
+        """
         self.ax.clear()
         self.ax.axis("off")
         node_colors = self.node_colors.copy()
         if self.current_coloring:
+            # Apply coloring to nodes if coloring is enabled
             max_color = max(self.current_coloring.values()) if self.current_coloring else 0
             color_map = self.get_color_map(max_color + 1)
             for node, color_idx in self.current_coloring.items():
                 node_colors[node] = color_map[color_idx]
         if self.clique_nodes:
-            # Highlight clique in red
+            # Highlight max clique in red
             for n in self.clique_nodes:
                 node_colors[n] = "red"
         if highlight_nodes:
@@ -153,6 +194,7 @@ class GraphApp:
                 node_colors[n] = "gold"
             for n in highlight_nodes.get('lightgreen', []):
                 node_colors[n] = "lightgreen"
+        # Draw graph edges and nodes with NetworkX
         nx.draw_networkx_edges(self.G, self.pos, ax=self.ax, alpha=0.6, width=2)
         nx.draw_networkx_nodes(self.G, self.pos, node_color=node_colors, ax=self.ax, node_size=800)
         nx.draw_networkx_labels(self.G, self.pos, ax=self.ax, font_size=16)
@@ -162,6 +204,7 @@ class GraphApp:
         self.canvas.draw_idle()
 
     def run_bfs(self):
+        """Execute BFS traversal and animate order."""
         self.current_coloring = None
         self.clique_nodes = None
         order = bfs_with_depth(self.G, start=0)
@@ -171,6 +214,7 @@ class GraphApp:
         self.animate_traversal(order, mode='BFS')
 
     def run_dfs(self):
+        """Execute DFS traversal and animate order."""
         self.current_coloring = None
         self.clique_nodes = None
         order = dfs_with_depth(self.G, start=0)
@@ -180,6 +224,10 @@ class GraphApp:
         self.animate_traversal(order, mode='DFS')
 
     def animate_traversal(self, order, mode='BFS'):
+        """
+        Animate node traversal in BFS or DFS.
+        Highlights current and previous nodes at each animation frame.
+        """
         if self.anim_thread and self.anim_thread.is_alive():
             self.log_msg("Animation is already running. Wait until it finishes.")
             return
@@ -205,6 +253,7 @@ class GraphApp:
                         step['lightgreen'].append(n)
                     self.draw_graph(highlight_nodes=step, title=f"{mode} Completed")
                     return
+            # Run the matplotlib animation
             self.anim = FuncAnimation(self.fig, update, frames=len(order) + 1,
                                       interval=700, repeat=False)
             self.canvas.draw_idle()
@@ -214,6 +263,7 @@ class GraphApp:
         self.anim_thread.start()
 
     def run_coloring(self):
+        """Perform greedy coloring and show results."""
         if self.anim_thread and self.anim_thread.is_alive():
             self.log_msg("Wait for any running animation to finish before coloring.")
             return
@@ -229,12 +279,14 @@ class GraphApp:
         self.draw_graph(title="Greedy Coloring Result")
 
     def check_cycle(self):
+        """Check and log whether the current graph has cycles."""
         self.clique_nodes = None
         result = has_cycle(self.G)
         self.log_msg("=== Cycle Check ===")
         self.log_msg(f"Graph has cycle: {result}")
 
     def check_clique(self):
+        """Find and highlight the maximum clique. Log size and membership."""
         self.current_coloring = None
         max_clique = find_max_clique(self.G)
         self.clique_nodes = max_clique
@@ -244,6 +296,7 @@ class GraphApp:
         self.draw_graph(title="Maximum Clique Highlighted")
 
 if __name__ == "__main__":
+    # Start the Tkinter app and log project info
     root = tk.Tk()
     app = GraphApp(root)
     app.log_msg(f"Nodes: 34, Edges: 78\n")
