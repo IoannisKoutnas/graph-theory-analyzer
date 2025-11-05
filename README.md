@@ -16,7 +16,3 @@ An interactive Python application that visualizes and analyzes the classic Karat
 - Matplotlib (for graph drawing and animation)
 - NetworkX (graph algorithms)
 
-## Installation
-
-1. Clone the repository:
-
